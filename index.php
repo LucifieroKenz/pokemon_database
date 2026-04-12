@@ -454,7 +454,7 @@ function extractPokemonDetails(array $data): array
             border: 2px solid white;
             font-weight: bold;
             background: #ffffff;
-            color: #f1f5f9;
+            color: #0c4a6e;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .error {
@@ -536,7 +536,7 @@ function extractPokemonDetails(array $data): array
             text-align: left;
             padding: 0.65rem 0.5rem;
             border-bottom: 1px solid #cbd5e1;
-            color: #1e293b;
+            color: #3C4142;
         }
         .stats-table td {
             color: #3C4142;
