@@ -451,9 +451,9 @@ function extractPokemonDetails(array $data): array
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
-            border: 2px solid #cbd5e1;
+            border: 2px solid white;
             font-weight: bold;
-            background: #3C4142;
+            background: #ffffff;
             color: #f1f5f9;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -645,7 +645,7 @@ function extractPokemonDetails(array $data): array
         <?php endif; ?>
 
         <div class="footer">
-            <p>PHP cURL fetch + json_decode() + formatted display.</p>
+            <p>This project is dedicated to the public domain. No rights reserved.</p>
         </div>
     </div>
 </body>
