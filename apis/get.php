@@ -23,6 +23,9 @@ function ensurePokemonTableExists(PDO $conn): void
         pokemon_id INT NOT NULL,
         pokemon_name VARCHAR(100) NOT NULL,
         search_term VARCHAR(255) NOT NULL,
+        height INT,
+        weight INT,
+        base_experience INT,
         types TEXT NOT NULL,
         abilities TEXT NOT NULL,
         stats TEXT NOT NULL,
@@ -47,14 +50,17 @@ function savePokemonSearch(PDO $conn, array $pokemonData, string $searchTerm): b
         ?? $pokemonData['sprites']['front_default']
         ?? '';
 
-    $sql = "INSERT INTO pokemon_searches (pokemon_id, pokemon_name, search_term, types, abilities, stats, sprite_url)
-            VALUES (:pokemon_id, :pokemon_name, :search_term, :types, :abilities, :stats, :sprite_url)";
+    $sql = "INSERT INTO pokemon_searches (pokemon_id, pokemon_name, search_term, height, weight, base_experience, types, abilities, stats, sprite_url)
+            VALUES (:pokemon_id, :pokemon_name, :search_term, :height, :weight, :base_experience, :types, :abilities, :stats, :sprite_url)";
     $stmt = $conn->prepare($sql);
 
     return $stmt->execute([
         ':pokemon_id' => $pokemonData['id'] ?? 0,
         ':pokemon_name' => $pokemonData['name'] ?? '',
         ':search_term' => $searchTerm,
+        ':height' => $pokemonData['height'] ?? 0,
+        ':weight' => $pokemonData['weight'] ?? 0,
+        ':base_experience' => $pokemonData['base_experience'] ?? 0,
         ':types' => $types,
         ':abilities' => $abilities,
         ':stats' => $stats,
@@ -126,11 +132,14 @@ if (isset($_GET['pokemon'])) {
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Decode JSON fields
+        // Decode JSON fields and convert numeric fields
         foreach ($results as &$row) {
             $row['types'] = json_decode($row['types'], true);
             $row['abilities'] = json_decode($row['abilities'], true);
             $row['stats'] = json_decode($row['stats'], true);
+            $row['height'] = (int)$row['height'];
+            $row['weight'] = (int)$row['weight'];
+            $row['base_experience'] = (int)$row['base_experience'];
         }
 
         // Get total count
