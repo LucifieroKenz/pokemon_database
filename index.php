@@ -123,7 +123,41 @@ function wantsJson(): bool
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (!empty($_GET['pokemon'])) {
+    if (isset($_GET['random'])) {
+        $randomId = rand(1, 1010);
+        $searchTerm = (string) $randomId;
+        $result = fetchPokemonData($randomId);
+        if (wantsJson()) {
+            if (isset($result['error'])) {
+                http_response_code(404);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['status' => 'failed', 'message' => $result['error']], JSON_PRETTY_PRINT);
+                exit;
+            } else {
+                $pokemonData = $result['data'];
+                $status = isset($conn) && $conn instanceof PDO && savePokemonSearch($conn, $pokemonData, $searchTerm) ? 'success' : 'failed';
+                http_response_code($status === 'success' ? 200 : 500);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['status' => $status, 'message' => $status === 'success' ? 'Pokemon fetched and saved successfully.' : 'Failed to save to database.', 'data' => $pokemonData], JSON_PRETTY_PRINT);
+                exit;
+            }
+        } else {
+            if (isset($result['error'])) {
+                $errorMessage = $result['error'];
+            } else {
+                $pokemonData = $result['data'];
+                if (isset($conn) && $conn instanceof PDO) {
+                    if (savePokemonSearch($conn, $pokemonData, $searchTerm)) {
+                        $savedMessage = 'Pokemon data saved to the database successfully.';
+                    } else {
+                        $errorMessage = 'Unable to save Pokemon data to the database.';
+                    }
+                } else {
+                    $savedMessage = 'Database unavailable. Search result was not saved.';
+                }
+            }
+        }
+    } elseif (!empty($_GET['pokemon'])) {
         $searchTerm = trim($_GET['pokemon']);
         if (wantsJson() && is_numeric($searchTerm)) {
             // Get from database
@@ -185,40 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     } else {
                         $savedMessage = 'Database unavailable. Search result was not saved.';
                     }
-                }
-            }
-        }
-    } elseif (isset($_GET['random'])) {
-        $randomId = rand(1, 1010);
-        $searchTerm = (string) $randomId;
-        $result = fetchPokemonData($randomId);
-        if (wantsJson()) {
-            if (isset($result['error'])) {
-                http_response_code(404);
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['status' => 'failed', 'message' => $result['error']], JSON_PRETTY_PRINT);
-                exit;
-            } else {
-                $pokemonData = $result['data'];
-                $status = isset($conn) && $conn instanceof PDO && savePokemonSearch($conn, $pokemonData, $searchTerm) ? 'success' : 'failed';
-                http_response_code($status === 'success' ? 200 : 500);
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['status' => $status, 'message' => $status === 'success' ? 'Pokemon fetched and saved successfully.' : 'Failed to save to database.', 'data' => $pokemonData], JSON_PRETTY_PRINT);
-                exit;
-            }
-        } else {
-            if (isset($result['error'])) {
-                $errorMessage = $result['error'];
-            } else {
-                $pokemonData = $result['data'];
-                if (isset($conn) && $conn instanceof PDO) {
-                    if (savePokemonSearch($conn, $pokemonData, $searchTerm)) {
-                        $savedMessage = 'Pokemon data saved to the database successfully.';
-                    } else {
-                        $errorMessage = 'Unable to save Pokemon data to the database.';
-                    }
-                } else {
-                    $savedMessage = 'Database unavailable. Search result was not saved.';
                 }
             }
         }
@@ -357,74 +357,128 @@ function extractPokemonDetails(array $data): array
     <title>Pokémon Database</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f7f7f7;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 50%, #1e40af 100%);
             margin: 0;
             padding: 0;
-            color: #333;
+            color: #f1f5f9;
+            min-height: 100vh;
         }
         .container {
             max-width: 900px;
             margin: 2rem auto;
             padding: 1.5rem;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+            border: 3px solid #cbd5e1;
+            position: relative;
+        }
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: linear-gradient(45deg, #a78bfa, #8b5cf6, #a78bfa);
+            border-radius: 19px;
+            z-index: -1;
         }
         h1 {
             margin-top: 0;
-            color: #2a75bb;
+            color: #f1f5f9;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-weight: bold;
+            text-align: center;
+            background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .api-meta {
             margin-bottom: 1.5rem;
-            color: #555;
+            color: #f1f5f9;
+            text-align: center;
+            font-style: italic;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         form {
             display: flex;
             flex-wrap: wrap;
             gap: 0.75rem;
             margin-bottom: 1.5rem;
+            justify-content: center;
         }
         input[type="text"] {
             flex: 1 1 250px;
             padding: 0.85rem 1rem;
-            border: 1px solid #ccc;
+            border: 2px solid #cbd5e1;
             border-radius: 8px;
             font-size: 1rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            color: #1e293b;
+            font-family: 'Courier New', monospace;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #a78bfa;
+            box-shadow: 0 0 8px rgba(167, 139, 250, 0.3), inset 0 2px 4px rgba(0,0,0,0.1);
         }
         button {
             padding: 0.85rem 1.25rem;
-            border: none;
+            border: 2px solid #cbd5e1;
             border-radius: 8px;
-            background: #2a75bb;
-            color: white;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            color: #1e293b;
             font-size: 1rem;
             cursor: pointer;
-            transition: background 0.2s ease;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         button:hover {
-            background: #1f5b94;
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(167, 139, 250, 0.3);
+            border-color: #a78bfa;
         }
         .message {
             padding: 1rem;
             border-radius: 8px;
             margin-bottom: 1rem;
+            border: 2px solid #cbd5e1;
+            font-weight: bold;
+            background: #3C4142;
+            color: #f1f5f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .error {
-            background: #ffe5e5;
-            color: #af1c1c;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            color: #dc2626;
+            border-color: #f87171;
         }
         .pokemon-card {
             display: grid;
             grid-template-columns: 280px 1fr;
             gap: 1.5rem;
             align-items: start;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #cbd5e1;
+            box-shadow: 0 4px 8px rgba(6, 182, 212, 0.15);
         }
         .pokemon-card img {
             width: 100%;
             border-radius: 16px;
-            border: 1px solid #eee;
-            background: #f9fafb;
+            border: 3px solid #cbd5e1;
+            background: #ffffff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .pokemon-details {
             display: grid;
@@ -433,6 +487,18 @@ function extractPokemonDetails(array $data): array
         .pokemon-details h2 {
             margin: 0 0 0.25rem;
             text-transform: capitalize;
+            color: #0ea5e9;
+            font-size: 1.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            border-bottom: 2px solid #a78bfa;
+            padding-bottom: 0.5rem;
+        }
+        .pokemon-details strong {
+            color: #0ea5e9;
+        }
+
+        .type-ability-text {
+            color: #3C4142;
         }
         .detail-grid {
             display: grid;
@@ -440,34 +506,64 @@ function extractPokemonDetails(array $data): array
             gap: 0.75rem 1.5rem;
         }
         .detail-grid div {
-            background: #f6f8fc;
+            background: #ffffff;
             padding: 0.85rem;
             border-radius: 10px;
+            border: 2px solid #cbd5e1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            color: #3C4142;
         }
         .detail-grid strong {
             display: block;
             margin-bottom: 0.35rem;
-            color: #555;
+            color: #0ea5e9;
             font-size: 0.95rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .stats-table {
             width: 100%;
             border-collapse: collapse;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.1);
+            border: 2px solid #cbd5e1;
         }
         .stats-table th,
         .stats-table td {
             text-align: left;
             padding: 0.65rem 0.5rem;
-            border-bottom: 1px solid #eaeaea;
+            border-bottom: 1px solid #cbd5e1;
+            color: #1e293b;
+        }
+        .stats-table td {
+            color: #3C4142;
         }
         .stats-table th {
-            color: #555;
-            width: 140px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: #f1f5f9;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .stats-table tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .stats-table tr:hover {
+            background: #e0f2fe;
         }
         .footer {
             margin-top: 2rem;
-            color: #666;
+            color: #f1f5f9;
             font-size: 0.95rem;
+            text-align: center;
+            font-style: italic;
+            border-top: 2px solid #a78bfa;
+            padding-top: 1rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
         @media (max-width: 720px) {
             .pokemon-card {
@@ -475,6 +571,10 @@ function extractPokemonDetails(array $data): array
             }
             .detail-grid {
                 grid-template-columns: 1fr;
+            }
+            .container {
+                margin: 1rem;
+                padding: 1rem;
             }
         }
     </style>
@@ -495,7 +595,7 @@ function extractPokemonDetails(array $data): array
         <?php endif; ?>
 
         <?php if ($savedMessage): ?>
-            <div class="message" style="background:#e6ffed;color:#1f6a2d;"><?= htmlspecialchars($savedMessage) ?></div>
+            <div class="message" style="background:linear-gradient(135deg,#e0f2fe 0%,#bae6fd 100%);color:#0c4a6e;border-color:#0ea5e9;font-weight:bold;box-shadow:0 2px 4px rgba(6, 182, 212, 0.2);">✓ <?= htmlspecialchars($savedMessage) ?></div>
         <?php endif; ?>
 
         <?php if ($pokemonData): ?>
@@ -511,8 +611,8 @@ function extractPokemonDetails(array $data): array
                 <div class="pokemon-details">
                     <div>
                         <h2><?= htmlspecialchars($pokemon['name']) ?> <span style="font-size:0.8rem;color:#777;">#<?= htmlspecialchars($pokemon['id']) ?></span></h2>
-                        <p><strong>Types:</strong> <?= htmlspecialchars(renderCommaList($pokemon['types'])) ?></p>
-                        <p><strong>Abilities:</strong> <?= htmlspecialchars(renderCommaList($pokemon['abilities'])) ?></p>
+                        <p><strong>Types:</strong> <span class="type-ability-text"><?= htmlspecialchars(renderCommaList($pokemon['types'])) ?></span></p>
+                        <p><strong>Abilities:</strong> <span class="type-ability-text"><?= htmlspecialchars(renderCommaList($pokemon['abilities'])) ?></span></p>
                     </div>
 
                     <div class="detail-grid">
